@@ -150,27 +150,32 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		if len(pathInfo) != 3 {
 			fmt.Fprintf(w, "Incorrect URL format")
 		} else {
-			pid := pathInfo[2]
-			data, err := ioutil.ReadAll(r.Body)
+			p_trans, err := strconv.Atoi(pathInfo[1])
 			if err != nil {
-				fmt.Println("Failed to read all")
-				fmt.Fprintf(w, "Couldn't read file")
-				// log.Fatal(err)
-			}
-			// vol, off := findNextSpot(int64(len(data)))
-			vol := pathInfo[1]
-			off := VOL_OFFSETS[vol]
-			nw, np, err := insertData(vol, off, &data)
-			if err != nil {
-				fmt.Println("From Inserting the data")
-				fmt.Fprintf(w, "Physical volume not found")
-				// log.Fatal(err)
-			}
-			fmt.Fprintf(w, "Written to volume: "+vol+"\n"+"Offset in Physical Volume: "+strconv.Itoa(int(off))+"\n"+"Written: "+strconv.Itoa(int(nw))+"\n"+"Padding: "+strconv.Itoa(int(np))+"\n")
-			ploc := mloc{vol, off, nw}
-			PHOTOID_LOCATIONS[pid] = ploc
-			VOL_OFFSETS[vol] += nw + np
+				fmt.Fprintf(w, "Incorrect physical volume id")
+			} else {
+				pid := pathInfo[2]
+				data, err := ioutil.ReadAll(r.Body)
+				if err != nil {
+					fmt.Println("Failed to read all")
+					fmt.Fprintf(w, "Couldn't read file")
+					// log.Fatal(err)
+				}
+				// vol, off := findNextSpot(int64(len(data)))
+				vol := PHYSICAL_VOLUMES[p_trans]
+				off := VOL_OFFSETS[vol]
+				nw, np, err := insertData(vol, off, &data)
+				if err != nil {
+					fmt.Println("From Inserting the data")
+					fmt.Fprintf(w, "Physical volume not found")
+					// log.Fatal(err)
+				}
+				fmt.Fprintf(w, "Written to volume: "+vol+"\n"+"Offset in Physical Volume: "+strconv.Itoa(int(off))+"\n"+"Written: "+strconv.Itoa(int(nw))+"\n"+"Padding: "+strconv.Itoa(int(np))+"\n")
+				ploc := mloc{vol, off, nw}
+				PHOTOID_LOCATIONS[pid] = ploc
+				VOL_OFFSETS[vol] += nw + np
 
+			}
 		}
 	}
 }

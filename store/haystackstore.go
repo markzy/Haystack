@@ -7,6 +7,9 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
+
+	"github.com/go-redis/redis"
 )
 
 type Response struct {
@@ -20,6 +23,7 @@ type mloc struct {
 	dsize  int64
 }
 
+var rclient *redis.Client
 var PHYSICAL_VOLUMES = [...]string{"p_v1.dat", "p_v2.dat", "p_v3.dat"}
 var VOL_OFFSETS map[string]int64
 var PHOTOID_LOCATIONS map[string]mloc
@@ -105,7 +109,7 @@ func loadData(file_name string, offset int64, d_size int64) (*Response, error) {
 	//get data and return it
 	data := make([]byte, d_size)
 	_, err = f.Read(data)
-	fmt.Println("Reading data")
+	// fmt.Println("Reading data")
 	if err != nil {
 		return nil, err
 	}
@@ -115,47 +119,72 @@ func loadData(file_name string, offset int64, d_size int64) (*Response, error) {
 func handler(w http.ResponseWriter, r *http.Request) {
 	// r.ParseForm()
 	if r.Method == "GET" {
-		pid := r.URL.Path[1:]
-		ploc, ok := PHOTOID_LOCATIONS[pid]
-		if ok == false {
-			fmt.Fprintf(w, "File not found")
+		pathInfo := strings.Split(r.URL.Path[1:], "/")
+		if len(pathInfo) != 3 {
+			fmt.Fprintf(w, "Incorrect URL format")
 		} else {
-			resp, err := loadData(ploc.vol, ploc.offset, ploc.dsize)
-			// fmt.Println(pid)
-			// resp,err := loadData(PHYSICAL_VOLUMES[0],0,135171)
-			if err != nil {
-				log.Fatal(err)
+			pid := pathInfo[2]
+			ploc, ok := PHOTOID_LOCATIONS[pid]
+			val, err := rclient.Get(pid).Result()
+			if err == nil || val != "" {
+				fmt.Println("Found in cache")
+				w.Write([]byte(val))
+			} else {
+				if ok == false {
+					fmt.Fprintf(w, "File not found")
+				} else {
+					resp, err := loadData(ploc.vol, ploc.offset, ploc.dsize)
+					// fmt.Println(pid)
+					// resp,err := loadData(PHYSICAL_VOLUMES[0],0,135171)
+					if err != nil {
+						log.Fatal(err)
+					}
+					w.Write(resp.Data)
+				}
 			}
-			w.Write(resp.Data)
 		}
 	}
 	if r.Method == "POST" {
-		pid := r.URL.Path[1:]
+		// pid := r.URL.Path[2]
+		pathInfo := strings.Split(r.URL.Path[1:], "/")
+		if len(pathInfo) != 3 {
+			fmt.Fprintf(w, "Incorrect URL format")
+		} else {
+			pid := pathInfo[2]
+			data, err := ioutil.ReadAll(r.Body)
+			if err != nil {
+				fmt.Println("Failed to read all")
+				fmt.Fprintf(w, "Couldn't read file")
+				// log.Fatal(err)
+			}
+			// vol, off := findNextSpot(int64(len(data)))
+			vol := pathInfo[1]
+			off := VOL_OFFSETS[vol]
+			nw, np, err := insertData(vol, off, &data)
+			if err != nil {
+				fmt.Println("From Inserting the data")
+				fmt.Fprintf(w, "Physical volume not found")
+				// log.Fatal(err)
+			}
+			fmt.Fprintf(w, "Written to volume: "+vol+"\n"+"Offset in Physical Volume: "+strconv.Itoa(int(off))+"\n"+"Written: "+strconv.Itoa(int(nw))+"\n"+"Padding: "+strconv.Itoa(int(np))+"\n")
+			ploc := mloc{vol, off, nw}
+			PHOTOID_LOCATIONS[pid] = ploc
+			VOL_OFFSETS[vol] += nw + np
 
-		data, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			fmt.Println("Failed to read all")
-			log.Fatal(err)
 		}
-		vol, off := findNextSpot(int64(len(data)))
-		nw, np, err := insertData(vol, off, &data)
-		if err != nil {
-			fmt.Println("From Inserting the data")
-			log.Fatal(err)
-		}
-		fmt.Fprintf(w, "Written to volume: "+vol+"\n"+"Offset in Physical Volume: "+strconv.Itoa(int(off))+"\n"+"Written: "+strconv.Itoa(int(nw))+"\n"+"Padding: "+strconv.Itoa(int(np))+"\n")
-		ploc := mloc{vol, off, nw}
-		PHOTOID_LOCATIONS[pid] = ploc
-		VOL_OFFSETS[vol] += nw + np
-
 	}
-
 }
 
 func main() {
 	err := createVolumes()
 	if err != nil {
 		log.Fatal(err)
+	}
+	rclient = redis.NewClient(&redis.Options{Addr: "localhost:6379", Password: "", DB: 0})
+	_, err = rclient.Ping().Result()
+	if err != nil {
+		fmt.Println("Can't ping cache")
+		// log.Fatal(err)
 	}
 	initDataStructures()
 	fmt.Println("Created Files Sucessfully")

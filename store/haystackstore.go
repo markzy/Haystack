@@ -25,6 +25,7 @@ type mloc struct {
 
 var rclient *redis.Client
 var PHYSICAL_VOLUMES = [...]string{"p_v1.dat", "p_v2.dat", "p_v3.dat"}
+var FPTRS map[string]*os.File
 var VOL_OFFSETS map[string]int64
 var PHOTOID_LOCATIONS map[string]mloc
 
@@ -44,9 +45,16 @@ func findNextSpot(insize int64) (string, int64) {
 
 func initDataStructures() {
 	VOL_OFFSETS = make(map[string]int64)
+	FPTRS = make(map[string]*os.File)
 	PHOTOID_LOCATIONS = make(map[string]mloc)
 	for _, f_name := range PHYSICAL_VOLUMES {
 		VOL_OFFSETS[f_name] = 0
+		// tf, err := os.OpenFile(f_name, os.O_APPEND|os.O_WRONLY, os.ModeAppend)
+		tf, err := os.OpenFile(f_name, os.O_RDWR, os.ModeAppend)
+		if err != nil {
+			log.Fatal("Error Opening the files")
+		}
+		FPTRS[f_name] = tf
 	}
 }
 
@@ -57,21 +65,33 @@ func check(err error, message string) {
 	fmt.Printf("%s\n", message)
 }
 
-func insertData(volume string, offset int64, data *[]byte) (n int64, p int64, err error) {
-	f, err := os.OpenFile(volume, os.O_APPEND|os.O_WRONLY, os.ModeAppend)
-	if err != nil {
-		return 0, 0, err
+func insertData(volume string, data *[]byte) (n int64, p int64, err error) {
+	// f, err := os.OpenFile(volume, os.O_APPEND|os.O_WRONLY, os.ModeAppend)
+	// if err != nil {
+	// 	return 0, 0, err
+	// }
+	f := FPTRS[volume]
+	curr_pos, err := f.Seek(0, 1)
+	if curr_pos != VOL_OFFSETS[volume] {
+		_, err := f.Seek(VOL_OFFSETS[volume], 0)
+		if err != nil {
+			fmt.Println("Couldn't seek correctly")
+			fmt.Println(err)
+			return 0, 0, err
+		}
 	}
-	nw, err := f.WriteAt(*data, offset)
+	nw, err := f.Write(*data)
+	// nw, err := f.WriteAt(*data, offset)
 	if err != nil {
 		return 0, 0, err
 	}
 	padding := 100 - (len(*data) % 100)
 	pdata := make([]byte, padding)
-	np, err := f.WriteAt(pdata, offset+int64(len(*data)))
+	np, err := f.Write(pdata)
 	if err != nil {
 		return int64(nw), 0, err
 	}
+	f.Sync()
 	return int64(nw), int64(np), err
 }
 
@@ -91,19 +111,14 @@ func createVolumes() error {
 }
 
 func loadData(file_name string, offset int64, d_size int64) (*Response, error) {
-	//open file
-	f, err := os.Open(file_name)
-	// check(err)
-	if err != nil {
-		log.Fatal(err)
-		return nil, err
-	}
+	//get file pointer
+	f := FPTRS[file_name]
 	//seek spot
 	//second paramter is seek in relation to 0 -> start of file, 1->from current offset, 2->relative to end
-	_, err = f.Seek(offset, 0)
+	_, err := f.Seek(offset, 0)
 	// check(err)
 	if err != nil {
-		log.Fatal(err)
+		// log.Fatal(err)
 		return nil, err
 	}
 	//get data and return it
@@ -133,6 +148,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
 				if ok == false {
 					fmt.Fprintf(w, "File not found")
 				} else {
+					fmt.Print("Getting from ploc: ")
+					fmt.Println(ploc)
 					resp, err := loadData(ploc.vol, ploc.offset, ploc.dsize)
 					// fmt.Println(pid)
 					// resp,err := loadData(PHYSICAL_VOLUMES[0],0,135171)
@@ -164,7 +181,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 				// vol, off := findNextSpot(int64(len(data)))
 				vol := PHYSICAL_VOLUMES[p_trans]
 				off := VOL_OFFSETS[vol]
-				nw, np, err := insertData(vol, off, &data)
+				nw, np, err := insertData(vol, &data)
 				if err != nil {
 					fmt.Println("From Inserting the data")
 					fmt.Fprintf(w, "Physical volume not found")

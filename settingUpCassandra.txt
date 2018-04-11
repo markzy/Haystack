@@ -12,13 +12,15 @@ root  = /afs/andrew.cmu.edu/usr13/davidz1
 
 set in cassandra.yaml 
 seeds: “unix4.andrew.cmu.edu”
+
+
 for # in range(servers):
 	mkdirs
 		root + /cassandra + #
-		root + /cassandra + # + /data
-		root + /cassandra + # + /commitlog
-		root + /cassandra + # +/cdc_raw
-		root + /cassandra + # + /saved_caches
+		data_dir = root + /cassandra + # + /data
+		commit_dir = root + /cassandra + # + /commitlog
+		cdc_dir = root + /cassandra + # +/cdc_raw
+		cache_dir = root + /cassandra + # + /saved_caches
 		root + /apache-cassandra-3.11.2/conf/c+ # 
 	cp 
 		root + /apache-cassandra-3.11.2/conf/cassandra.yaml 		root + /apache-cassandra-3.11.2/conf/c + # + /cassandra.yaml
@@ -26,6 +28,12 @@ for # in range(servers):
 	set in c#/cassandra.yaml
 		listen_address: unix + # + .andrew.cmu.edu
 		rpc_address: unix + # + .andrew.cmu.edu
+
+		data_file_directories:
+		- datadir
+		commitlog_directory: commit_dir
+		cdc_raw_directory: cdc_dir
+		saved_caches_directory: cache_dir
 
 
 Creating key space

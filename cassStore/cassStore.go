@@ -19,7 +19,7 @@ var cluster_addresses = [...]string{"unix4.andrew.cmu.edu", "unix5.andrew.cmu.ed
 
 // const CASSPORT = 7269
 // const CASSPORT = 9161
-
+const REDISPORT = 6969
 const CASSPORT = 9069
 const PORT = 4000
 const keyspace = "store"
@@ -92,12 +92,14 @@ func main() {
 	cass.Keyspace = keyspace
 	cass.Timeout = 5 * time.Second
 	cass.ProtoVersion = 4
-	rclient = redis.NewClient(&redis.Options{Addr: "localhost:6379", Password: "", DB: 0})
+	rclient = redis.NewClient(&redis.Options{Addr: cluster_addresses[0] + ":" + strconv.Itoa(REDISPORT), Password: "", DB: 0})
 	_, err := rclient.Ping().Result()
 	if err != nil {
 		fmt.Println("Can't ping cache")
+		fmt.Println(err)
 		// log.Fatal(err)
 	}
+	fmt.Println("Cache is up")
 	session, err := cass.CreateSession()
 	if err != nil {
 		fmt.Println("Failed Creating Cassandra Session")

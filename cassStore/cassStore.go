@@ -106,6 +106,31 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func createKeyspace(cluster *gocql.ClusterConfig, keyspace string) {
+	c := *cluster
+	c.Keyspace = "system"
+	c.Timeout = 20 * time.Second
+	session, err := c.CreateSession()
+	if err != nil {
+		fmt.Println("createSession:", err)
+	}
+
+	err = session.Query(`DROP KEYSPACE IF EXISTS ` + keyspace).Exec()
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	err = session.Query(fmt.Sprintf(`CREATE KEYSPACE %s
+	WITH replication = {
+		'class' : 'SimpleStrategy',
+		'replication_factor' : %d
+	}`, keyspace, 2)).Exec()
+
+	if err != nil {
+		fmt.Println(err)
+	}
+}
+
 func main() {
 	cass = gocql.NewCluster(cluster_addresses[0] + ":" + strconv.Itoa(CASSPORT))
 	fmt.Println(strconv.Itoa(CASSPORT))
@@ -113,6 +138,8 @@ func main() {
 	cass.Timeout = 5 * time.Second
 	cass.ProtoVersion = 4
 	cass.Port = CASSPORT
+	createKeyspace(cass, "store")
+
 	rclient = redis.NewClient(&redis.Options{Addr: cluster_addresses[0] + ":" + strconv.Itoa(REDISPORT), Password: "", DB: 0})
 	_, err := rclient.Ping().Result()
 	if err != nil {

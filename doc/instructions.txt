@@ -1,0 +1,17 @@
+Cassandra, PORT 25538
+
+[initial setup]
+wget http://apache.claz.org/cassandra/3.11.2/apache-cassandra-3.11.2-bin.tar.gz
+tar -xvf apache-cassandra-3.11.2-bin.tar.gz cassandra
+mv apache-cassandra-3.11.2 cassandra
+
+modify cassandra-env.sh port to 25539
+
+    [for each host]
+    python3.4 generate_cassandra_yaml.py --host unix4.andrew.cmu.edu --cassandra_home /afs/andrew.cmu.edu/usr1/yaoz2/haystack/cassandra_home/cassandra --output ./cassandra-4.yaml --seed uni4.andrew.cmu.edu
+    ./cassandra/bin/cassandra -D cassandra.config=file:/afs/andrew.cmu.edu/usr1/yaoz2/haystack/cassandra_home/cassandra-4.yaml
+
+------------------------------------------------------------------------------------------------------------------------------------------------
+
+Redis, PORT 25540(regular), 35540(cluster)
+./redis-server --port 25540

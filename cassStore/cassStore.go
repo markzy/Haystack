@@ -15,7 +15,7 @@ import (
 
 var cass *gocql.ClusterConfig
 var rclient *redis.Client
-var cluster_addresses = [...]string{"unix4.andrew.cmu.edu", "unix5.andrew.cmu.edu", "unix6.andrew.cmu.edu", "unix7.andrew.cmu.edu", "unix8.andrew.cmu.edu"}
+var cluster_addresses = [...]string{"unix4.andrew.cmu.edu", "unix5.andrew.cmu.edu"}
 
 // const CASSPORT = 7269
 // const CASSPORT = 9161
@@ -108,9 +108,11 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	cass = gocql.NewCluster(cluster_addresses[0] + ":" + strconv.Itoa(CASSPORT))
+	fmt.Println(strconv.Itoa(CASSPORT))
 	cass.Keyspace = keyspace
 	cass.Timeout = 5 * time.Second
 	cass.ProtoVersion = 4
+	cass.Port = CASSPORT
 	rclient = redis.NewClient(&redis.Options{Addr: cluster_addresses[0] + ":" + strconv.Itoa(REDISPORT), Password: "", DB: 0})
 	_, err := rclient.Ping().Result()
 	if err != nil {

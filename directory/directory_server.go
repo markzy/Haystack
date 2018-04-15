@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"net/http"
 	. "Haystack/directory/dao"
 	. "Haystack/directory/models"
@@ -9,59 +8,55 @@ import (
 	"github.com/gorilla/mux"
 	"time"
 	"strconv"
+	"io/ioutil"
+	"bytes"
+	"math/rand"
+	"log"
 )
 
-var logicalMappingDAO = LogicalMappingDAO{}
 var photoDAO = PhotoMetaDAO{}
 
 func getPhotoURL(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	id := params["id"]
 	result, err := photoDAO.FindById(id)
+
 	if err != nil {
 		w.WriteHeader(404)
 		return
 	}
 
-	machineID := getAvailableMachineID(result.LogicalVolume)
-	// TODO: Wait for store support for this URL
-	//w.WriteHeader(302)
-	w.Write([]byte("http://" + SystemConfig.ServerAddresses[machineID] + "/" + strconv.Itoa(machineID) + "/" + strconv.Itoa(result.LogicalVolume) + "/" + result.PhotoID))
+	machineID := getAvailableMachineID()
+	url := "http://" + SystemConfig.ServerAddresses[machineID] + "/" + result.PhotoID
+	http.Redirect(w, r, url, 302)
 }
 
 func uploadPhoto(w http.ResponseWriter, r *http.Request) {
 	id := generateUniqueID()
-	photo := PhotoMeta{PhotoID: id, LogicalVolume: getAvailableLogicalVolumeID(), State: 2}
+	photo := PhotoMeta{PhotoID: id, State: 2}
 	photoDAO.Insert(photo)
 
-	// TODO: redirect request to every store in the logical volume
+	body, parseErr := ioutil.ReadAll(r.Body)
+	if parseErr != nil {
+		http.Error(w, parseErr.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	for _, element := range SystemConfig.ServerAddresses {
+		_, err := http.Post("http://"+element, r.Header.Get("Content-type"), bytes.NewReader(body))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
 
 	photo.State = 1
-	err:= photoDAO.Update(photo)
-	if err != nil{
-		panic(err)
+	updateErr := photoDAO.Update(photo)
+	if updateErr != nil {
+		panic(updateErr)
 	}
+
 	w.Write([]byte(photo.PhotoID))
-}
-
-func initMapping() {
-	counter := -1
-	numServers := len(SystemConfig.ServerAddresses)
-	totalVolumeNumber := numServers * SystemConfig.PhysicalVolumeNumber
-
-	if SystemConfig.Replication > numServers {
-		log.Printf("too high replication number, override to %d", numServers)
-		SystemConfig.Replication = numServers
-	}
-
-	for i := 0; i < totalVolumeNumber/SystemConfig.Replication; i++ {
-		mapping := LogicalMapping{LogicalID: i}
-		for j := 0; j < SystemConfig.Replication; j++ {
-			counter ++
-			mapping.Volumes = append(mapping.Volumes, PhysicalVolume{MachineID: counter % numServers, VolumeID: counter / numServers, Free: true})
-		}
-		logicalMappingDAO.Insert(mapping)
-	}
 }
 
 func getTimestamp() int64 {
@@ -73,19 +68,17 @@ func generateUniqueID() string {
 	return strconv.FormatInt(getTimestamp(), 10)
 }
 
-func getAvailableMachineID(logical int) int {
-	// TODO: load-balancing here
-	return logical - logical
-}
-
-func getAvailableLogicalVolumeID() int {
-	// TODO: load-balancing here
-	return 0
+func getAvailableMachineID() int {
+	return random(0, len(SystemConfig.ServerAddresses))
 }
 
 func init() {
 	DBConnect("localhost", "haystack")
-	initMapping()
+}
+
+func random(min, max int) int {
+	rand.Seed(time.Now().Unix())
+	return rand.Intn(max-min) + min
 }
 
 func main() {

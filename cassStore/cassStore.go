@@ -19,8 +19,8 @@ var cluster_addresses = [...]string{"unix4.andrew.cmu.edu", "unix5.andrew.cmu.ed
 
 // const CASSPORT = 7269
 // const CASSPORT = 9161
-
-const CASSPORT = 9069
+const REDISPORT = 6969
+const CASSPORT = 9040
 const PORT = 4000
 const keyspace = "store"
 const table = "photos"
@@ -29,11 +29,7 @@ const value = "data"
 
 func handler(w http.ResponseWriter, r *http.Request) {
 	//GET
-	session, err := cass.CreateSession()
-	if err != nil {
-		fmt.Fprintf(w, "Failed Creating Cassandra Session")
-	}
-	defer session.Close()
+
 	fmt.Println(strings.Split(r.URL.Path[1:], "/"))
 	if r.Method == "GET" && r.URL.Path[1:] != "favicon.ico" {
 		fmt.Println("GET METHOD")
@@ -45,25 +41,43 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			pid := pathInfo[0]
 			val, err := rclient.Get(pid).Result()
 			if err == nil && val != "" {
-				fmt.Fprintf(w, val)
+				fmt.Println("Got from cache")
+				w.Write([]byte(val))
+				// fmt.Fprintf(w, val)
 			} else {
 				//FINE GET FROM Store
-				var data string
-				err := session.Query("SELECT " + value + " FROM photos WHERE " + key + "=" + "'" + pid + "'").Scan(&data)
+				session, err := cass.CreateSession()
 				if err != nil {
-					fmt.Fprintf(w, "Failed reading from Store")
+					fmt.Fprintf(w, "Failed Creating Cassandra Session")
+				}
+				defer session.Close()
+				var data string
+				err = session.Query("SELECT " + value + " FROM photos WHERE " + key + "=" + "'" + pid + "'").Scan(&data)
+				if err != nil {
+					fmt.Fprintf(w, "Failed reading from Cassandra")
 					fmt.Println(err)
 				} else {
 					w.Write([]byte(data))
+					err = rclient.Set(pid, string(data), 0).Err()
+					if err != nil {
+						fmt.Println("Failed writing to cache")
+						fmt.Println(err)
+					}
 				}
 			}
 		}
 	} else if r.Method == "POST" && r.URL.Path[1:] != "favicon.ico" {
+
 		fmt.Println("POST METHOD")
 		pathInfo := strings.Split(r.URL.Path[1:], "/")
 		if len(pathInfo) != 1 {
 			fmt.Fprintf(w, "Incorrect URL format")
 		} else {
+			session, err := cass.CreateSession()
+			if err != nil {
+				fmt.Fprintf(w, "Failed Creating Cassandra Session")
+			}
+			defer session.Close()
 			//POST TO STORE
 			pid := pathInfo[0]
 			d, err := ioutil.ReadAll(r.Body)
@@ -77,6 +91,11 @@ func handler(w http.ResponseWriter, r *http.Request) {
 					fmt.Println(err)
 				} else {
 					fmt.Fprintf(w, "Write Successful")
+					err = rclient.Set(pid, string(d), 0).Err()
+					if err != nil {
+						fmt.Println("Failed writing to cache")
+						fmt.Println(err)
+					}
 				}
 			}
 		}
@@ -88,14 +107,15 @@ func handler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	cass = gocql.NewCluster(cluster_addresses[2] + ":" + strconv.Itoa(CASSPORT))
+	cass = gocql.NewCluster(cluster_addresses[0] + ":" + strconv.Itoa(CASSPORT))
 	cass.Keyspace = keyspace
 	cass.Timeout = 5 * time.Second
 	cass.ProtoVersion = 4
-	rclient = redis.NewClient(&redis.Options{Addr: "localhost:6379", Password: "", DB: 0})
+	rclient = redis.NewClient(&redis.Options{Addr: cluster_addresses[0] + ":" + strconv.Itoa(REDISPORT), Password: "", DB: 0})
 	_, err := rclient.Ping().Result()
 	if err != nil {
 		fmt.Println("Can't ping cache")
+		fmt.Println(err)
 		// log.Fatal(err)
 	}
 	session, err := cass.CreateSession()

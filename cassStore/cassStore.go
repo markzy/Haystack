@@ -15,12 +15,12 @@ import (
 
 var cass *gocql.ClusterConfig
 var rclient *redis.Client
-var cluster_addresses = [...]string{"unix4.andrew.cmu.edu", "unix5.andrew.cmu.edu"}
+var cluster_addresses = [...]string{"unix4.andrew.cmu.edu:", "unix5.andrew.cmu.edu:"}
 
 // const CASSPORT = 7269
 // const CASSPORT = 9161
-const REDISPORT = 6969
-const CASSPORT = 25538
+const REDISPORT = "6969"
+const CASSPORT = "25538"
 const PORT = 4000
 const keyspace = "store"
 const table = "photos"
@@ -132,15 +132,15 @@ func createKeyspace(cluster *gocql.ClusterConfig, keyspace string) {
 }
 
 func main() {
-	cass = gocql.NewCluster(cluster_addresses[0] + ":" + strconv.Itoa(CASSPORT))
-	fmt.Println(strconv.Itoa(CASSPORT))
+	cass = gocql.NewCluster(cluster_addresses[0]+CASSPORT, cluster_addresses[1]+CASSPORT)
 	cass.Keyspace = keyspace
 	cass.Timeout = 5 * time.Second
 	cass.ProtoVersion = 4
-	cass.Port = CASSPORT
+	i, _ := strconv.Atoi(CASSPORT)
+	cass.Port = i
 	createKeyspace(cass, "store")
 
-	rclient = redis.NewClient(&redis.Options{Addr: cluster_addresses[0] + ":" + strconv.Itoa(REDISPORT), Password: "", DB: 0})
+	rclient = redis.NewClient(&redis.Options{Addr: cluster_addresses[0] + REDISPORT, Password: "", DB: 0})
 	_, err := rclient.Ping().Result()
 	if err != nil {
 		fmt.Println("Can't ping cache")

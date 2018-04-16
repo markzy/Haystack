@@ -54,7 +54,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
 				defer session.Close()
 				var data string
 				var meta string
-				err = session.Query("SELECT * "+" FROM photos WHERE "+key+"="+"'"+pid+"'").Scan(&meta, &data)
+				var nouse string
+				err = session.Query("SELECT * "+" FROM photos WHERE "+key+"="+"'"+pid+"'").Scan(&nouse, &data, &meta)
 				if err != nil {
 					fmt.Fprintf(w, "Failed reading from Cassandra")
 					fmt.Println(err)
@@ -92,8 +93,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 				fmt.Fprintf(w, "Couldn't Read Post request")
 				fmt.Println(err)
 			} else {
-				tm := "1"
-				err = session.Query("INSERT INTO "+table+" ("+key+","+value+","+tm+") VALUES(?,?,?)", pid, d, tm).Exec()
+				err = session.Query("INSERT INTO "+table+" ("+key+","+value+","+metadata+") VALUES(?,?,?)", pid, d, "1").Exec()
 				if err != nil {
 					fmt.Fprintf(w, "Failed to write to Cassandra")
 					fmt.Println(err)
@@ -125,7 +125,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 				fmt.Fprintf(w, "Failed to write to Cassandra")
 				fmt.Println(err)
 			} else {
-				fmt.Fprintf(w, "Write Successful")
+				fmt.Fprintf(w, "Delete Successful")
 				err = rclient.Del(pid).Err()
 				if err != nil {
 					fmt.Println("Failed deleting to cache")
@@ -191,10 +191,11 @@ func main() {
 	}
 	_, exists := keyspacemeta.Tables[table]
 	if exists != true {
-		err = session.Query("CREATE TABLE IF NOT EXISTS" + table + " (" + key + " text PRIMARY KEY," + value + " blob, + " + metadata + " text);").Exec()
+		err = session.Query("CREATE TABLE " + table + " (" + key + " text PRIMARY KEY," + value + " blob," + metadata + " text);").Exec()
 		if err != nil {
 			fmt.Println("Error creating table")
-			log.Fatal(err)
+			fmt.Println(err)
+			// log.Fatal(err)
 		}
 	}
 	session.Close()

@@ -21,7 +21,9 @@
 
 <p><code>mkdir haystack &amp;&amp; cd haystack </code></p>
 
-<p>Copy <strong>EVERYTHING</strong> under scripts folder into haystack folder.</p>
+<p>Copy <strong>EVERYTHING</strong> under scripts folder into haystack folder. There are many ways to do this. Download our project and mv the files or just use scp, an example of scp command is provided:</p>
+
+<p><code>scp project_path/scripts/* andrew_id@unix4.andrew.cmu.edu:~/haystack/</code></p>
 
 <p>After this, you haystack folder should contain:</p>
 
@@ -71,7 +73,7 @@
 
 <h3>Modify server code</h3>
 
-<p>(Refer to README Known issue #2 if golang reports error here)</p>
+<p>(Refer to Known issue #2 if golang reports error here)</p>
 
 <p><code>cd $GOPATH/src/Haystack/server</code></p>
 
@@ -96,6 +98,14 @@
 <p><code>GET http://server_address:25555/:photo_id</code>, get the image using the <code>photo_id</code> you just got.</p>
 
 <p><code>DELETE http://server_address:25555/:photo_id</code>, delete the image</p>
+
+<h2>Known issues</h2>
+
+<p>Due to unknown compatibility problem with AFS, Cassandra occasionally gets filesystem error. If that happens, please use ps to get the process id, kill it and restart cassandra with script we provided.</p>
+
+<p>If you exit ssh and relogin, $GOPATH will get lost, please enter <code>~/haystack</code> and run <code>source ./fix_go_path.sh</code> in order to fix the problem and be able to start our server.</p>
+
+<p>we use ports <code>25536 ~ 25540</code> and <code>25555</code>, they rarely conflict with other students. If they do, please contact us.</p>
 
 </body>
 </html>

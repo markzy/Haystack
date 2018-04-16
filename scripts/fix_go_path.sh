@@ -1,4 +1,4 @@
-# /bin/bash
+# /bin/source
 
 export GOROOT=$(pwd)/go
 export PATH=$PATH:$GOROOT/bin

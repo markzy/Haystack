@@ -4,11 +4,3 @@ Please strictly follow instructions provided by instructions/index.html in order
 If there are any problem with this setting up, please don't hesitate to contact us.
 yao.zhou@sv.cmu.edu
 david.zhang@sv.cmu.edu
-
-Known issues:
-1. Due to unknown compatibility problem with AFS, Cassandra occasionally gets filesystem error.
-If that happens, please use ps to get the process id, kill it and restart cassandra with script we provided.
-
-2. If you exit ssh and relogin, $GOPATH will get lost, please enter ~/haystack and run bash ./fix_go_path.sh in order to start our server.
-
-3. we use ports 25536 ~ 25540 and 25555, it rarely conflicts with other students. If it does, please contact us.

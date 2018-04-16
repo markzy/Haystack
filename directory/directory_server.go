@@ -21,7 +21,7 @@ func getPhotoURL(w http.ResponseWriter, r *http.Request) {
 	id := params["id"]
 	result, err := photoDAO.FindById(id)
 
-	if err != nil {
+	if err != nil || result.State == 0{
 		w.WriteHeader(404)
 		return
 	}
@@ -43,7 +43,7 @@ func uploadPhoto(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for _, element := range SystemConfig.ServerAddresses {
-		_, err := http.Post("http://"+element, r.Header.Get("Content-type"), bytes.NewReader(body))
+		res, err := http.Post("http://"+element+"/"+id, r.Header.Get("Content-type"), bytes.NewReader(body))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -83,18 +83,6 @@ func random(min, max int) int {
 
 func main() {
 	r := mux.NewRouter()
-
-	//if len(os.Args) < 2 {
-	//	log.Fatal("Missing current Node id")
-	//	os.Exit(-1)
-	//}
-	//
-	//i64, err := strconv.ParseInt(os.Args[1], 10, 64)
-	//SystemConfig.NodeID = int(i64)
-	//if err != nil {
-	//	log.Fatal("Wrong Node id")
-	//	os.Exit(-1)
-	//}
 
 	r.HandleFunc("/photo/{id}", getPhotoURL).Methods("GET")
 	r.HandleFunc("/photo", uploadPhoto).Methods("POST")

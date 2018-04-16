@@ -17,7 +17,7 @@ var cluster_addresses = [...]string{"unix4.andrew.cmu.edu", "unix5.andrew.cmu.ed
 var cass *gocql.ClusterConfig
 var rclient *redis.Client
 
-const REDISPORT = "6969"
+const REDISPORT = "25540"
 const CASSPORT = "25538"
 const PORT = 25555
 const keyspace = "store"
@@ -183,7 +183,7 @@ func init() {
 	cass.Port = i
 	createKeyspace(cass, "store")
 
-	rclient = redis.NewClient(&redis.Options{Addr: cluster_addresses[0] + ":" + REDISPORT, Password: "", DB: 0})
+	rclient = redis.NewClient(&redis.Options{Addr: "unix4.andrew.cmu.edu:" + REDISPORT, Password: "", DB: 0})
 	_, err := rclient.Ping().Result()
 	if err != nil {
 		fmt.Println("Can't ping cache")
@@ -202,7 +202,7 @@ func init() {
 	}
 	_, exists := keyspacemeta.Tables[table]
 	if exists != true {
-		err = session.Query("CREATE TABLE IF NOT EXISTS" + table + " (" + key + " text PRIMARY KEY," + value + " blob, + " + metadata + " text);").Exec()
+		err = session.Query("CREATE TABLE IF NOT EXISTS " + table + " (" + key + " text PRIMARY KEY," + value + " blob, " + metadata + " text);").Exec()
 		if err != nil {
 			fmt.Println("Error creating table")
 			log.Fatal(err)

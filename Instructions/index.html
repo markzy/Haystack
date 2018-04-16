@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<meta charset="utf-8" />
+		<link rel="stylesheet" type="text/css" href="css/style.css" />
+		<title>Instructions</title>
+	</head>
+<body>
+<h1>Instructions</h1>
+
+<h2>Initial setup</h2>
+
+<p>Since our home directory is located under AFS, this initial setup only needs to be done ONCE.</p>
+
+<p>Go to home directory</p>
+
+<p><code>cd ~</code></p>
+
+<p>Create a directory</p>
+
+<p><code>mkdir haystack &amp;&amp; cd haystack </code></p>
+
+<p>Copy <strong>EVERYTHING</strong> under scripts folder into haystack folder.</p>
+
+<p>After this, you haystack folder should contain:</p>
+
+<ul>
+	<li><code>cassandra-env.sh</code></li>
+	<li><code>fix_go_path,sh</code></li>
+	<li><code>generate_cassandra_yaml.py</code></li>
+	<li><code>init.sh</code></li>
+	<li><code>run_cassandra.sh </code></li>
+</ul>
+
+<p>Run our setup script with <strong>source</strong>, this could take 3-5 minutes to finish, please be patient.</p>
+
+<p><code>source ./init.sh</code></p>
+
+<h2>Start Cassandra and Redis</h2>
+
+<p>Before you test our project, you need to Launch a Cassandra Cluster and at least a master Redis server at “unix4.andrew.cmu.edu”. </p>
+
+<p>Sorry we hardcoded Redis master server address, we find it really hard to setup a sharded redis cluster without Root access.</p>
+
+<h3>Start Cassandra Cluster</h3>
+
+<p>Please MAKE SURE you start the first Cassandra instance on <code>unix4.andrew.cmu.edu</code>, this is the seed server in our generated config file. </p>
+
+<p>Go to <code>~/haystack</code>, run this:</p>
+
+<p><code>bash run_cassandra.sh</code></p>
+
+<p>You may then head to any other Andrew machines and do the same thing. </p>
+
+<p>Thanks to our Python processor, they will all be configured to join the cluster.</p>
+
+<h3>Start Redis Replication Servers (Optional)</h3>
+
+<p>Setting up Redis is optional, but Redis significantly increases throughput of our system.</p>
+
+<p>Please MAKE SURE you are on “unix4.andrew.cmu.edu” and inside <code>~/haystack</code></p>
+
+<p>Do this:</p>
+
+<p><code>./redis/src/redis-server --bind unix4.andrew.cmu.edu --port 25540 &amp;</code></p>
+
+<p>If you want to add more slave nodes to do replication, go to any other Andrew machine and run this:</p>
+
+<p><code>./redis/src/redis-server --bind $(hostname) --port 25540 --slaveof unix4.andrew.cmu.edu 25540 &amp;</code></p>
+
+<h3>Modify server code</h3>
+
+<p>(Refer to README Known issue #2 if golang reports error here)</p>
+
+<p><code>cd $GOPATH/src/Haystack/server</code></p>
+
+<p>Modify server.go</p>
+
+<p>change <code>var cluster_addresses = [...]string{&quot;unix4.andrew.cmu.edu&quot;, &quot;unix5.andrew.cmu.edu&quot;}</code> to a list of servers where you have Cassandra running.</p>
+
+<p>Then run</p>
+
+<p><code>go run server.go</code></p>
+
+<h2>Testing our project</h2>
+
+<p>Please make sure you modified <code>server.go</code> and specified a list of addresses where Cassandra is up.</p>
+
+<p><code>server_address</code> refers to where you started our server. We suggest using postman or similar API testing tool to test our project.</p>
+
+<p>Available API:</p>
+
+<p><code>POST http://server_address:25555</code>, post with a image. If succeeds, it will give you <code>photo_id</code></p>
+
+<p><code>GET http://server_address:25555/:photo_id</code>, get the image using the <code>photo_id</code> you just got.</p>
+
+<p><code>DELETE http://server_address:25555/:photo_id</code>, delete the image</p>
+
+</body>
+</html>
+

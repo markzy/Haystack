@@ -38,5 +38,6 @@ go get github.com/gorilla/mux
 go get github.com/gocql/gocql
 cd $GOPATH/src
 git clone https://github.com/markzy/Haystack.git
+cd ~/haystack
 
 

@@ -39,15 +39,4 @@ go get github.com/gocql/gocql
 cd $GOPATH/src
 git clone https://github.com/markzy/Haystack.git
 
-# install mongodb
-curl -O https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.6.3.tgz
-tar -zxf mongodb-linux-x86_64-3.6.3.tgz
-mv mongodb-linux-x86_64-3.6.3/ mongodb
-export PATH=$(pwd)/mongodb/bin:$PATH
-mkdir -p ./data/db
-chmod 777 -R ./data
-rm mongodb-linux-x86_64-3.6.3.tgz
-rm -rf mongodb-linux-x86_64-3.6.3
-
-
 

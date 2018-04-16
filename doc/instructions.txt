@@ -1,18 +1,12 @@
 (install all dependencies)
 source ./init.sh
 
-(Cassandra, PORT 25538)
+[cassandra]
 [for each host]
-python3.4 generate_cassandra_yaml.py --host $(hostname) --cassandra_home $(pwd)/cassandra --seed unix4.andrew.cmu.edu --output ./cassandra.$(hostname).yaml
-./cassandra/bin/cassandra -D cassandra.config=file:$(pwd)/cassandra.$(hostname).yaml
+bash ./run_cassandra.sh
 
-------------------------------------------------------------------------------------------------------------------------------------------------
-(MongoDB, )
-
-
-
-------------------------------------------------------------------------------------------------------------------------------------------------
-
+[redis]
+[master host]
 (Redis, PORT 25540(regular), 35540(cluster))
 ./redis-server --port 25540
 

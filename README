@@ -1,3 +1,7 @@
+Replication of Needle in a Haystack on shared filesystem.
+
+Uses Cassandra multinode configuration and Redis as main components with Go based interface.
+
 As setting up this project could be hard, we prepared a few scripts to make this process easier.
 Please strictly follow instructions provided by instructions/index.html in order to setup dependencies correctly.
 
